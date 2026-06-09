@@ -1,0 +1,16 @@
+{
+  "files.associations": {
+    "*.sql": "sql"
+  },
+  "[sql]": {
+    "editor.defaultFormatter": "ms-ossdata.vscode-pgsql",
+    "editor.formatOnSave": false,
+    "editor.suggestOnTriggerCharacters": true,
+    "editor.quickSuggestions": {
+      "other": true,
+      "comments": false,
+      "strings": true
+    }
+  },
+  "pgsql.intelliSense.enableIntelliSense": true
+}

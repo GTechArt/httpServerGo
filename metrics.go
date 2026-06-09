@@ -4,12 +4,15 @@ import (
 	"fmt"
 	"net/http"
 	"sync/atomic"
+
+	"github.com/GTechArt/httpServerGo/internal/database"
 )
 
 type apiConfig struct {
 	// atomic.Int32: safe to read/write from multiple goroutines
 	// Use the “atomic” method to avoid a concurrency situation when multiple
 	// requests increment the counter
+	queries        *database.Queries
 	fileserverHits atomic.Int32
 }
 
