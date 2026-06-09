@@ -5,28 +5,47 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"sync/atomic"
 
 	"github.com/GTechArt/httpServerGo/internal/database"
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
 )
 
+type apiConfig struct {
+	// atomic.Int32: safe to read/write from multiple goroutines
+	// Use the “atomic” method to avoid a concurrency situation when multiple
+	// requests increment the counter
+	db             *database.Queries
+	fileserverHits atomic.Int32
+	platform       string
+}
+
 func main() {
 	godotenv.Load()
 	dbURL := os.Getenv("DB_URL")
+	if dbURL == "" {
+		log.Fatal("DB_URL must be set")
+	}
 
-	db, err := sql.Open("postgres", dbURL)
+	platform := os.Getenv("PLATFORM")
+	if platform == "" {
+		log.Fatal("PLATFORM must be set")
+	}
+
+	dbSql, err := sql.Open("postgres", dbURL)
 	if err != nil {
 		log.Fatalf("Can't access at the database: %s", err)
 	}
 
-	dbQueries := database.New(db)
+	dbQueries := database.New(dbSql)
 
 	const filepathRoot = "."
 	const port = "8080"
 
 	apiCfg := apiConfig{
-		queries: dbQueries,
+		db:       dbQueries,
+		platform: platform,
 	}
 
 	mux := http.NewServeMux()
@@ -35,7 +54,9 @@ func main() {
 	mux.HandleFunc("GET /admin/metrics", apiCfg.handlerMetrics)
 	mux.HandleFunc("POST /admin/reset", apiCfg.handlerReset)
 	mux.HandleFunc("GET /api/healthz", handleReadiness)
-	mux.HandleFunc("POST /api/validate_chirp", handleChirpsValidate)
+	//mux.HandleFunc("POST /api/validate_chirp", handleChirpsValidate)
+	mux.HandleFunc("POST /api/users", apiCfg.handleAddUesrs)
+	mux.HandleFunc("POST /api/chirps", apiCfg.handleCreateChirp)
 
 	srv := &http.Server{
 		Addr:    ":" + port,
