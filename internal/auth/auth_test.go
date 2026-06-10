@@ -2,6 +2,10 @@ package auth
 
 import (
 	"testing"
+	"time"
+
+	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
 )
 
 func TestCheckPasswordHash(t *testing.T) {
@@ -63,6 +67,57 @@ func TestCheckPasswordHash(t *testing.T) {
 			}
 			if !tt.wantErr && match != tt.matchPassword {
 				t.Errorf("CheckPasswordHash() expects %v, got %v", tt.matchPassword, match)
+			}
+		})
+	}
+}
+
+func TestJWTToken(t *testing.T) {
+	userId := uuid.New()
+	secretTest := "CHUT!-Is-my-little-secret."
+
+	tests := []struct {
+		name         string
+		verifySecret string
+		expiresIn    time.Duration
+		wantErr      bool
+	}{
+		{
+			name:         "Same secret",
+			verifySecret: secretTest,
+			expiresIn:    time.Hour,
+			wantErr:      false,
+		},
+		{
+			name:         "Secret doesn't match",
+			verifySecret: "Another-secret",
+			expiresIn:    time.Hour,
+			wantErr:      true,
+		},
+		{
+			name:         "token expired",
+			verifySecret: secretTest,
+			expiresIn:    -time.Hour,
+			wantErr:      true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tokenString, err := MakeJWT(userId, secretTest, tt.expiresIn)
+			if err != nil {
+				t.Fatalf("MakeJWT() internal error: %s", err)
+			}
+
+			claims := jwt.RegisteredClaims{}
+			_, err = jwt.ParseWithClaims(tokenString, &claims, func(*jwt.Token) (interface{}, error) {
+				return []byte(tt.verifySecret), nil
+			})
+			if (err != nil) != tt.wantErr {
+				t.Errorf("MakeJWT() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if !tt.wantErr && claims.Subject != userId.String() {
+				t.Errorf("MakeJWT() expects = %v, got %v", userId, claims)
 			}
 		})
 	}
