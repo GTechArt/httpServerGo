@@ -3,18 +3,29 @@ package main
 import (
 	"encoding/json"
 	"net/http"
+	"time"
+
+	"github.com/GTechArt/httpServerGo/internal/auth"
+	"github.com/GTechArt/httpServerGo/internal/database"
+	"github.com/google/uuid"
 )
 
-func (cfg *apiConfig) handleAddUesrs(w http.ResponseWriter, req *http.Request) {
+type User struct {
+	Id        uuid.UUID `json:"id"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+	Email     string    `json:"email"`
+	Password  string    `json:"-"`
+}
+
+func (cfg *apiConfig) handleAddUser(w http.ResponseWriter, req *http.Request) {
 	type parameters struct {
-		Email string `json:"email"`
+		Password string `json:"password"`
+		Email    string `json:"email"`
 	}
 
 	type returnVal struct {
-		Id         string `json:"id"`
-		Created_at string `json:"created_at"`
-		Updated_at string `json:"updated_at"`
-		Email      string `json:"email"`
+		User
 	}
 
 	decoder := json.NewDecoder(req.Body)
@@ -24,17 +35,31 @@ func (cfg *apiConfig) handleAddUesrs(w http.ResponseWriter, req *http.Request) {
 		respondWithError(w, http.StatusInternalServerError, "Couldn't decode user", err)
 		return
 	}
+	if params.Email == "" || params.Password == "" {
+		respondWithError(w, http.StatusNotAcceptable, "Email or password is empty", err)
+		return
+	}
 
-	user, err := cfg.db.CreateUser(req.Context(), params.Email)
+	hashedPassword, err := auth.HashPassword(params.Password)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Couldn't hashing user's password", err)
+		return
+	}
+
+	user, err := cfg.db.CreateUser(req.Context(), database.CreateUserParams{
+		HashedPassword: hashedPassword,
+		Email:          params.Email,
+	})
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "Couldn't create user : %s", err)
 	}
 
 	respondWithJSON(w, http.StatusCreated, returnVal{
-		Id:         user.ID.String(),
-		Created_at: user.CreatedAt.String(),
-		Updated_at: user.UpdatedAt.String(),
-		Email:      user.Email,
+		User: User{
+			Id:        user.ID,
+			CreatedAt: user.CreatedAt,
+			UpdatedAt: user.UpdatedAt,
+			Email:     user.Email,
+		},
 	})
-
 }
