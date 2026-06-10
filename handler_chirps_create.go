@@ -4,23 +4,28 @@ import (
 	"encoding/json"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/GTechArt/httpServerGo/internal/database"
 	"github.com/google/uuid"
 )
 
+type Chirp struct {
+	Id        uuid.UUID `json:"id"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+	Body      string    `json:"body"`
+	UserId    uuid.UUID `json:"user_id"`
+}
+
 func (cfg *apiConfig) handleCreateChirp(w http.ResponseWriter, req *http.Request) {
 	type parameters struct {
-		Body   string `json:"body"`
-		UserId string `json:"user_id"`
+		Body   string    `json:"body"`
+		UserId uuid.UUID `json:"user_id"`
 	}
 
 	type returnVal struct {
-		Id         string `json:"id"`
-		Created_at string `json:"created_at"`
-		Updated_at string `json:"updated_at"`
-		Body       string `json:"body"`
-		UserId     string `json:"user_id"`
+		Chirp
 	}
 
 	decoder := json.NewDecoder(req.Body)
@@ -37,28 +42,23 @@ func (cfg *apiConfig) handleCreateChirp(w http.ResponseWriter, req *http.Request
 		return
 	}
 
-	uuidUser, err := uuid.Parse(params.UserId)
-	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, "Invalide User_id: %s", err)
-		return
-	}
-
 	chirp, err := cfg.db.CreateChirp(req.Context(), database.CreateChirpParams{
 		Body:   cleaned,
-		UserID: uuid.NullUUID{UUID: uuidUser, Valid: true},
+		UserID: params.UserId,
 	})
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "Couldn't create chirp : %s", err)
 	}
 
 	respondWithJSON(w, http.StatusCreated, returnVal{
-		Id:         chirp.ID.String(),
-		Created_at: chirp.CreatedAt.String(),
-		Updated_at: chirp.UpdatedAt.String(),
-		Body:       chirp.Body,
-		UserId:     chirp.UserID.UUID.String(),
+		Chirp: Chirp{
+			Id:        chirp.ID,
+			CreatedAt: chirp.CreatedAt,
+			UpdatedAt: chirp.UpdatedAt,
+			Body:      chirp.Body,
+			UserId:    chirp.UserID,
+		},
 	})
-
 }
 
 func validatingChirp(msg string) (string, bool) {

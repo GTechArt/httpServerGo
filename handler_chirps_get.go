@@ -8,11 +8,7 @@ import (
 
 func (cfg *apiConfig) handleGetChirps(w http.ResponseWriter, req *http.Request) {
 	type returnVal struct {
-		Id         string `json:"id"`
-		Created_at string `json:"created_at"`
-		Updated_at string `json:"updated_at"`
-		Body       string `json:"body"`
-		UserId     string `json:"user_id"`
+		Chirp
 	}
 
 	dat, err := cfg.db.GetAllChirps(req.Context())
@@ -24,11 +20,13 @@ func (cfg *apiConfig) handleGetChirps(w http.ResponseWriter, req *http.Request) 
 	returnVals := make([]returnVal, len(dat))
 	for i, chirp := range dat {
 		returnVals[i] = returnVal{
-			Id:         chirp.ID.String(),
-			Created_at: chirp.CreatedAt.String(),
-			Updated_at: chirp.UpdatedAt.String(),
-			Body:       chirp.Body,
-			UserId:     chirp.UserID.UUID.String(),
+			Chirp: Chirp{
+				Id:        chirp.ID,
+				CreatedAt: chirp.CreatedAt,
+				UpdatedAt: chirp.UpdatedAt,
+				Body:      chirp.Body,
+				UserId:    chirp.UserID,
+			},
 		}
 	}
 
@@ -37,11 +35,7 @@ func (cfg *apiConfig) handleGetChirps(w http.ResponseWriter, req *http.Request) 
 
 func (cfg *apiConfig) handleGetChirp(w http.ResponseWriter, req *http.Request) {
 	type returnVal struct {
-		Id         string `json:"id"`
-		Created_at string `json:"created_at"`
-		Updated_at string `json:"updated_at"`
-		Body       string `json:"body"`
-		UserId     string `json:"user_id"`
+		Chirp
 	}
 
 	chirpID := req.PathValue("chirpID")
@@ -58,11 +52,13 @@ func (cfg *apiConfig) handleGetChirp(w http.ResponseWriter, req *http.Request) {
 	}
 
 	respondWithJSON(w, http.StatusOK, returnVal{
-		Id:         chirp.ID.String(),
-		Created_at: chirp.CreatedAt.String(),
-		Updated_at: chirp.UpdatedAt.String(),
-		Body:       chirp.Body,
-		UserId:     chirp.UserID.UUID.String(),
+		Chirp: Chirp{
+			Id:        chirp.ID,
+			CreatedAt: chirp.CreatedAt,
+			UpdatedAt: chirp.UpdatedAt,
+			Body:      chirp.Body,
+			UserId:    chirp.UserID,
+		},
 	})
 
 }
