@@ -1,6 +1,8 @@
 package auth
 
 import (
+	"errors"
+	"net/http"
 	"testing"
 	"time"
 
@@ -61,12 +63,13 @@ func TestCheckPasswordHash(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			match, err := CheckPasswordHash(tt.password, tt.hash)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("CheckPasswordHash() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("CheckPasswordHash() error = '%v', wantErr '%v'", err, tt.wantErr)
 			}
 			if !tt.wantErr && match != tt.matchPassword {
-				t.Errorf("CheckPasswordHash() expects %v, got %v", tt.matchPassword, match)
+				t.Errorf("CheckPasswordHash() expects '%v', got '%v'", tt.matchPassword, match)
 			}
 		})
 	}
@@ -104,6 +107,7 @@ func TestJWTToken(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			tokenString, err := MakeJWT(userId, secretTest, tt.expiresIn)
 			if err != nil {
 				t.Fatalf("MakeJWT() internal error: %s", err)
@@ -114,10 +118,72 @@ func TestJWTToken(t *testing.T) {
 				return []byte(tt.verifySecret), nil
 			})
 			if (err != nil) != tt.wantErr {
-				t.Errorf("MakeJWT() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("MakeJWT() error = '%v', wantErr '%v'", err, tt.wantErr)
 			}
 			if !tt.wantErr && claims.Subject != userId.String() {
-				t.Errorf("MakeJWT() expects = %v, got %v", userId, claims)
+				t.Errorf("MakeJWT() expects = '%v', got '%v'", userId, claims)
+			}
+		})
+	}
+}
+
+func TestGetBearerToken(t *testing.T) {
+	tests := []struct {
+		name              string
+		headerSetup       func() http.Header
+		verifyTokenString string
+		wantErr           error
+	}{
+		{
+			name: "Good Token",
+			headerSetup: func() http.Header {
+				h := http.Header{}
+				h.Set("Authorization", "Bearer it-is-my-little-token-secret")
+				return h
+			},
+			verifyTokenString: "it-is-my-little-token-secret",
+			wantErr:           nil,
+		},
+		{
+			name: "No Auth Found",
+			headerSetup: func() http.Header {
+				h := http.Header{}
+				return h
+			},
+			verifyTokenString: "",
+			wantErr:           ErrNoAuthHeader,
+		},
+		{
+			name: "No Token Found",
+			headerSetup: func() http.Header {
+				h := http.Header{}
+				h.Set("Authorization", "Bearer ")
+				return h
+			},
+			verifyTokenString: "",
+			wantErr:           ErrNoToken,
+		},
+		{
+			name: "Tricky Token (starts/ends with cutset chars)",
+			headerSetup: func() http.Header {
+				h := http.Header{}
+				h.Set("Authorization", "Bearer rabbit-ate-a-bear")
+				return h
+			},
+			verifyTokenString: "rabbit-ate-a-bear",
+			wantErr:           nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			tokenTest, err := GetBearerToken(tt.headerSetup())
+			if !errors.Is(err, tt.wantErr) {
+				t.Errorf("GetBearerToken() error = '%v', want '%v'", err, tt.wantErr)
+			}
+			if tt.wantErr == nil && tokenTest != tt.verifyTokenString {
+				t.Errorf("GetBearerToken() expects = '%v', got '%v'", tt.verifyTokenString, tokenTest)
 			}
 		})
 	}

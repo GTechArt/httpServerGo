@@ -1,11 +1,19 @@
 package auth
 
 import (
+	"errors"
+	"net/http"
+	"strings"
 	"time"
 
 	"github.com/alexedwards/argon2id"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
+)
+
+var (
+	ErrNoAuthHeader = errors.New("couldn't find Authorization header")
+	ErrNoToken      = errors.New("couldn't find token in Authorization header")
 )
 
 func HashPassword(password string) (string, error) {
@@ -42,4 +50,16 @@ func MakeJWT(userID uuid.UUID, tokenSecret string, expiresIn time.Duration) (str
 		return "", err
 	}
 	return ss, nil
+}
+
+func GetBearerToken(headers http.Header) (string, error) {
+	auth := headers.Get("Authorization")
+	if auth == "" {
+		return "", ErrNoAuthHeader
+	}
+	token := strings.TrimPrefix(auth, "Bearer ")
+	if token == "" {
+		return "", ErrNoToken
+	}
+	return token, nil
 }
