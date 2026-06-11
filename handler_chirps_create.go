@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/GTechArt/httpServerGo/internal/auth"
 	"github.com/GTechArt/httpServerGo/internal/database"
 	"github.com/google/uuid"
 )
@@ -20,8 +21,7 @@ type Chirp struct {
 
 func (cfg *apiConfig) handleCreateChirp(w http.ResponseWriter, req *http.Request) {
 	type parameters struct {
-		Body   string    `json:"body"`
-		UserId uuid.UUID `json:"user_id"`
+		Body string `json:"body"`
 	}
 
 	type returnVal struct {
@@ -36,6 +36,18 @@ func (cfg *apiConfig) handleCreateChirp(w http.ResponseWriter, req *http.Request
 		return
 	}
 
+	token, err := auth.GetBearerToken(req.Header)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Couldn't get token", err)
+		return
+	}
+
+	userId, err := auth.ValidateJWT(token, cfg.jwtSecret)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "Couldn't get UserID, bad token", err)
+		return
+	}
+
 	cleaned, valid := validatingChirp(params.Body)
 	if !valid {
 		respondWithError(w, http.StatusBadRequest, "Chirp is too long", nil)
@@ -44,7 +56,7 @@ func (cfg *apiConfig) handleCreateChirp(w http.ResponseWriter, req *http.Request
 
 	chirp, err := cfg.db.CreateChirp(req.Context(), database.CreateChirpParams{
 		Body:   cleaned,
-		UserID: params.UserId,
+		UserID: userId,
 	})
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "Couldn't create chirp : %s", err)

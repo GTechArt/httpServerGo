@@ -38,8 +38,8 @@ func MakeJWT(userID uuid.UUID, tokenSecret string, expiresIn time.Duration) (str
 	// Create the Claims
 	claims := &jwt.RegisteredClaims{
 		Issuer:    "chirpy-access",
-		IssuedAt:  jwt.NewNumericDate(time.Now()),
-		ExpiresAt: jwt.NewNumericDate(time.Now().Add(expiresIn)),
+		IssuedAt:  jwt.NewNumericDate(time.Now().UTC()),
+		ExpiresAt: jwt.NewNumericDate(time.Now().UTC().Add(expiresIn)), // time duration in second
 		Subject:   userID.String(),
 	}
 
@@ -50,6 +50,36 @@ func MakeJWT(userID uuid.UUID, tokenSecret string, expiresIn time.Duration) (str
 		return "", err
 	}
 	return ss, nil
+}
+
+func ValidateJWT(tokenString, tokenSecret string) (uuid.UUID, error) {
+	claims := jwt.RegisteredClaims{}
+	token, err := jwt.ParseWithClaims(tokenString, &claims, func(*jwt.Token) (interface{}, error) {
+		return []byte(tokenSecret), nil
+	})
+	if err != nil {
+		return uuid.Nil, err
+	}
+
+	uuidStr, err := token.Claims.GetSubject()
+	if err != nil {
+		return uuid.Nil, err
+	}
+
+	userID, err := uuid.Parse(uuidStr)
+	if err != nil {
+		return uuid.Nil, err
+	}
+
+	expirationDate, err := token.Claims.GetExpirationTime()
+	if err != nil {
+		return uuid.Nil, err
+	}
+	if time.Now().Compare(expirationDate.Time) != -1 {
+		return uuid.Nil, errors.New("token has expired")
+	}
+
+	return userID, nil
 }
 
 func GetBearerToken(headers http.Header) (string, error) {

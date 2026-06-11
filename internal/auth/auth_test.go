@@ -127,6 +127,71 @@ func TestJWTToken(t *testing.T) {
 	}
 }
 
+func TestValidateJWT(t *testing.T) {
+	userId := uuid.New()
+	secretTest := "CHUT!-Is-my-little-secret."
+
+	// Pre-build tokens for the different scenarios
+	validToken, err := MakeJWT(userId, secretTest, time.Hour)
+	if err != nil {
+		t.Fatalf("MakeJWT() internal error: %s", err)
+	}
+	expiredToken, err := MakeJWT(userId, secretTest, -time.Hour)
+	if err != nil {
+		t.Fatalf("MakeJWT() internal error: %s", err)
+	}
+
+	tests := []struct {
+		name         string
+		tokenString  string
+		verifySecret string
+		wantUserID   uuid.UUID
+		wantErr      bool
+	}{
+		{
+			name:         "Valid token",
+			tokenString:  validToken,
+			verifySecret: secretTest,
+			wantUserID:   userId,
+			wantErr:      false,
+		},
+		{
+			name:         "Wrong secret",
+			tokenString:  validToken,
+			verifySecret: "Another-secret",
+			wantUserID:   uuid.Nil,
+			wantErr:      true,
+		},
+		{
+			name:         "Expired token",
+			tokenString:  expiredToken,
+			verifySecret: secretTest,
+			wantUserID:   uuid.Nil,
+			wantErr:      true,
+		},
+		{
+			name:         "Malformed token",
+			tokenString:  "not.a.valid.jwt",
+			verifySecret: secretTest,
+			wantUserID:   uuid.Nil,
+			wantErr:      true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			gotUserID, err := ValidateJWT(tt.tokenString, tt.verifySecret)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("ValidateJWT() error = '%v', wantErr '%v'", err, tt.wantErr)
+			}
+			if gotUserID != tt.wantUserID {
+				t.Errorf("ValidateJWT() expects = '%v', got '%v'", tt.wantUserID, gotUserID)
+			}
+		})
+	}
+}
+
 func TestGetBearerToken(t *testing.T) {
 	tests := []struct {
 		name              string
