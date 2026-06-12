@@ -7,7 +7,6 @@ package database
 
 import (
 	"context"
-	"database/sql"
 	"time"
 
 	"github.com/google/uuid"
@@ -46,50 +45,27 @@ func (q *Queries) CreateToken(ctx context.Context, arg CreateTokenParams) (Refre
 }
 
 const getUserFromRefreshToken = `-- name: GetUserFromRefreshToken :one
-SELECT user_id, id, users.created_at, users.updated_at, email, hashed_password, token, refresh_tokens.created_at, refresh_tokens.updated_at, user_id, expires_at, revoked_at FROM users
+SELECT users.id, users.created_at, users.updated_at, users.email, users.hashed_password FROM users
 JOIN refresh_tokens ON users.id = refresh_tokens.user_id
 WHERE token = $1
 AND revoked_at IS NULL
 AND expires_at > NOW()
 `
 
-type GetUserFromRefreshTokenRow struct {
-	UserID         uuid.UUID
-	ID             uuid.UUID
-	CreatedAt      time.Time
-	UpdatedAt      time.Time
-	Email          string
-	HashedPassword string
-	Token          string
-	CreatedAt_2    time.Time
-	UpdatedAt_2    time.Time
-	UserID_2       uuid.UUID
-	ExpiresAt      time.Time
-	RevokedAt      sql.NullTime
-}
-
-func (q *Queries) GetUserFromRefreshToken(ctx context.Context, token string) (GetUserFromRefreshTokenRow, error) {
+func (q *Queries) GetUserFromRefreshToken(ctx context.Context, token string) (User, error) {
 	row := q.db.QueryRowContext(ctx, getUserFromRefreshToken, token)
-	var i GetUserFromRefreshTokenRow
+	var i User
 	err := row.Scan(
-		&i.UserID,
 		&i.ID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.Email,
 		&i.HashedPassword,
-		&i.Token,
-		&i.CreatedAt_2,
-		&i.UpdatedAt_2,
-		&i.UserID_2,
-		&i.ExpiresAt,
-		&i.RevokedAt,
 	)
 	return i, err
 }
 
 const revokeRefreshToken = `-- name: RevokeRefreshToken :one
-
 UPDATE refresh_tokens
 SET revoked_at = NOW(),
     updated_at = NOW()
@@ -97,7 +73,6 @@ WHERE token = $1
 RETURNING token, created_at, updated_at, user_id, expires_at, revoked_at
 `
 
-// RETURNING *;
 func (q *Queries) RevokeRefreshToken(ctx context.Context, token string) (RefreshToken, error) {
 	row := q.db.QueryRowContext(ctx, revokeRefreshToken, token)
 	var i RefreshToken

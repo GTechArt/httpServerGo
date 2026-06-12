@@ -14,7 +14,7 @@ func (cfg *apiConfig) handleRefreshToken(w http.ResponseWriter, req *http.Reques
 
 	bearerToken, err := auth.GetBearerToken(req.Header)
 	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, "Couldn't found bearer token", err)
+		respondWithError(w, http.StatusUnauthorized, "Couldn't found bearer token", err)
 		return
 	}
 
@@ -24,12 +24,7 @@ func (cfg *apiConfig) handleRefreshToken(w http.ResponseWriter, req *http.Reques
 		return
 	}
 
-	if user.RevokedAt.Valid && time.Now().UTC().Compare(user.RevokedAt.Time) != -1 {
-		respondWithError(w, http.StatusUnauthorized, "Token Expired", err)
-		return
-	}
-
-	token, err := auth.MakeJWT(user.UserID, cfg.jwtSecret, time.Hour)
+	token, err := auth.MakeJWT(user.ID, cfg.jwtSecret, time.Hour)
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "Counldn't generate JWT Token", err)
 		return
@@ -47,12 +42,10 @@ func (cfg *apiConfig) handleRevokeToken(w http.ResponseWriter, req *http.Request
 		return
 	}
 
-	refreshToken, err := cfg.db.RevokeRefreshToken(req.Context(), token)
-	if err != nil || !refreshToken.RevokedAt.Valid {
-		respondWithError(w, http.StatusInternalServerError, "Couldn't revoke refresh_token in database", err)
+	_, err = cfg.db.RevokeRefreshToken(req.Context(), token)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "Couldn't revoke refresh_token in database", err)
 		return
 	}
-
-	respondWithJSON(w, http.StatusNoContent, nil)
-
+	w.WriteHeader(http.StatusNoContent)
 }

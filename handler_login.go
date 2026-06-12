@@ -67,6 +67,7 @@ func (cfg *apiConfig) handleLogin(w http.ResponseWriter, req *http.Request) {
 
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "Couldn't save refresh token", err)
+		return
 	}
 
 	respondWithJSON(w, http.StatusOK, returnVal{

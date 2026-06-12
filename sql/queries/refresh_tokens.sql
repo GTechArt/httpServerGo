@@ -10,7 +10,7 @@ VALUES (
 RETURNING *;
 
 -- name: GetUserFromRefreshToken :one
-SELECT user_id, * FROM users
+SELECT users.* FROM users
 JOIN refresh_tokens ON users.id = refresh_tokens.user_id
 WHERE token = $1
 AND revoked_at IS NULL
