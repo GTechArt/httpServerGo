@@ -1,6 +1,8 @@
 package auth
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"errors"
 	"net/http"
 	"strings"
@@ -75,7 +77,7 @@ func ValidateJWT(tokenString, tokenSecret string) (uuid.UUID, error) {
 	if err != nil {
 		return uuid.Nil, err
 	}
-	if time.Now().Compare(expirationDate.Time) != -1 {
+	if time.Now().UTC().Compare(expirationDate.Time) != -1 {
 		return uuid.Nil, errors.New("token has expired")
 	}
 
@@ -92,4 +94,12 @@ func GetBearerToken(headers http.Header) (string, error) {
 		return "", ErrNoToken
 	}
 	return token, nil
+}
+
+// MakeRefreshToken makes a random 256 bit token
+// encoded in hex
+func MakeRefreshToken() string {
+	key := make([]byte, 32)
+	rand.Read(key)
+	return hex.EncodeToString(key)
 }

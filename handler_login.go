@@ -6,13 +6,13 @@ import (
 	"time"
 
 	"github.com/GTechArt/httpServerGo/internal/auth"
+	"github.com/GTechArt/httpServerGo/internal/database"
 )
 
 func (cfg *apiConfig) handleLogin(w http.ResponseWriter, req *http.Request) {
 	type parameters struct {
-		Password  string `json:"password"`
-		Email     string `json:"email"`
-		ExpiresIn int    `json:"expires_in_seconds"`
+		Password string `json:"password"`
+		Email    string `json:"email"`
 	}
 
 	type returnVal struct {
@@ -51,22 +51,32 @@ func (cfg *apiConfig) handleLogin(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	expriresIn := 1 * time.Hour
-	if params.ExpiresIn != 0 {
-		expriresIn = time.Duration(params.ExpiresIn) * time.Second
-	}
-	token, err := auth.MakeJWT(user.ID, cfg.jwtSecret, expriresIn)
+	jwt, err := auth.MakeJWT(user.ID, cfg.jwtSecret, time.Hour)
 	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, "Counldn't generate JWT Token", err)
+		respondWithError(w, http.StatusInternalServerError, "Counldn't generate JWT", err)
+		return
+	}
+
+	refreshToken := auth.MakeRefreshToken()
+
+	_, err = cfg.db.CreateToken(req.Context(), database.CreateTokenParams{
+		Token:     refreshToken,
+		UserID:    user.ID,
+		ExpiresAt: time.Now().UTC().Add(1440 * time.Hour),
+	})
+
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Couldn't save refresh token", err)
 	}
 
 	respondWithJSON(w, http.StatusOK, returnVal{
 		User: User{
-			Id:        user.ID,
-			CreatedAt: user.CreatedAt,
-			UpdatedAt: user.UpdatedAt,
-			Email:     user.Email,
-			Token:     token,
+			Id:           user.ID,
+			CreatedAt:    user.CreatedAt,
+			UpdatedAt:    user.UpdatedAt,
+			Email:        user.Email,
+			Token:        jwt,
+			RefreshToken: refreshToken,
 		},
 	})
 }
