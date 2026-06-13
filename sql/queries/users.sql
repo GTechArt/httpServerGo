@@ -21,5 +21,11 @@ SET email = $2,
 WHERE id = $1
 RETURNING *;
 
+-- name: SetChirpyRedStatus :one
+UPDATE users
+SET is_chirpy_red = $2
+WHERE id = $1
+RETURNING *;
+
 -- name: DeleteAllUsers :exec
 DELETE FROM users;

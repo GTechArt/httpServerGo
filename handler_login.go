@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 	"time"
 
@@ -70,6 +71,8 @@ func (cfg *apiConfig) handleLogin(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	log.Printf("DEBUG: isChirpyRed = %v", user.IsChirpyRed)
+
 	respondWithJSON(w, http.StatusOK, returnVal{
 		User: User{
 			Id:           user.ID,
@@ -78,6 +81,7 @@ func (cfg *apiConfig) handleLogin(w http.ResponseWriter, req *http.Request) {
 			Email:        user.Email,
 			Token:        jwt,
 			RefreshToken: refreshToken,
+			ChirpyRed:    user.IsChirpyRed,
 		},
 	})
 }

@@ -60,7 +60,6 @@ type DeleteChirpParams struct {
 	UserID uuid.UUID
 }
 
-// LEFT JOIN users ON users.id = chirps.user_id
 func (q *Queries) DeleteChirp(ctx context.Context, arg DeleteChirpParams) error {
 	_, err := q.db.ExecContext(ctx, deleteChirp, arg.ID, arg.UserID)
 	return err
