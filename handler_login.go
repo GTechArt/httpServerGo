@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"log"
 	"net/http"
 	"time"
 
@@ -70,8 +69,6 @@ func (cfg *apiConfig) handleLogin(w http.ResponseWriter, req *http.Request) {
 		respondWithError(w, http.StatusInternalServerError, "Couldn't save refresh token", err)
 		return
 	}
-
-	log.Printf("DEBUG: isChirpyRed = %v", user.IsChirpyRed)
 
 	respondWithJSON(w, http.StatusOK, returnVal{
 		User: User{

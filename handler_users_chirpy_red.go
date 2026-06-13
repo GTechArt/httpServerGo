@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/GTechArt/httpServerGo/internal/auth"
 	"github.com/GTechArt/httpServerGo/internal/database"
 	"github.com/google/uuid"
 )
@@ -20,9 +21,19 @@ func (cfg *apiConfig) handleSetChirpyRed(w http.ResponseWriter, req *http.Reques
 		User
 	}
 
+	apiKey, err := auth.GetAPIkey(req.Header)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "Couldn't get apiKey", err)
+		return
+	}
+	if apiKey != cfg.polkaKey {
+		respondWithError(w, http.StatusUnauthorized, "Apikey doesn't match", err)
+		return
+	}
+
 	decoder := json.NewDecoder(req.Body)
 	params := parameters{}
-	err := decoder.Decode(&params)
+	err = decoder.Decode(&params)
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "Couldn't decode parameters", err)
 		return

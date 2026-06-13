@@ -16,6 +16,7 @@ import (
 var (
 	ErrNoAuthHeader = errors.New("couldn't find Authorization header")
 	ErrNoToken      = errors.New("couldn't find token in Authorization header")
+	ErrNoApiKey     = errors.New("couldn't find ApiKey in Authorization header")
 )
 
 func HashPassword(password string) (string, error) {
@@ -102,4 +103,20 @@ func MakeRefreshToken() string {
 	key := make([]byte, 32)
 	rand.Read(key)
 	return hex.EncodeToString(key)
+}
+
+func GetAPIkey(headers http.Header) (string, error) {
+	auth := headers.Get("Authorization")
+
+	if auth == "" {
+		return "", ErrNoAuthHeader
+	}
+
+	apiKey := strings.TrimPrefix(auth, "ApiKey ")
+
+	if apiKey == "" {
+		return "", ErrNoApiKey
+	}
+
+	return apiKey, nil
 }
